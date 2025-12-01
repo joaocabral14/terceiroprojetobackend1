@@ -1,114 +1,109 @@
-//import express from 'express';
 const express = require('express');
-
-//import createClient from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-//import {createClient} from '@supabase/supabase-js'
-const supabaseClient = require('@supabase/supabase-js');
-
-//import morgan from 'morgan';
+const { createClient } = require('@supabase/supabase-js'); // Correção da importação
 const morgan = require('morgan');
-
-//import bodyParser from "body-parser";
 const bodyParser = require('body-parser');
-
-//import { createClient } from "https://cdn.skypack.dev/@supabase/supabase-js";
+const cors = require('cors');
 
 const app = express();
 
-const cors=require("cors");
-const corsOptions ={
-   origin:'*', 
-   credentials:true,            //access-control-allow-credentials:true
-   optionSuccessStatus:200,
-}
+// Configuração CORS
+const corsOptions = {
+  origin: '*',
+  credentials: true,
+  optionSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 
-app.use(cors(corsOptions)) // Use this after the variable declaration
-
-
-// using morgan for logs
+// Logs HTTP
 app.use(morgan('combined'));
 
-app.use(bodyParser.urlencoded({extended: true}));
+// Body parser
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-const supabase = 
-    supabaseClient.createClient('https://pwbsewvqxzenmgeceuay.supabase.co', 
-        'sb_publishable_VU_cskfKTik4MSXWSkER2A_WjYVBGwf')
+// Instancia do Supabase
+const supabase = createClient(
+  'https://pwbsewvqxzenmgeceuay.supabase.co', 
+  'sb_publishable_VU_cskfKTik4MSXWSkER2A_WjYVBGwf'
+);
 
+// ======================
+// ROTAS
+// ======================
 
+// Lista todos os produtos
 app.get('/products', async (req, res) => {
-    const {data, error} = await supabase
-        .from('products')
-        .select()
-    res.send(data);
-    console.log(`lists all products${data}`);
+  const { data, error } = await supabase.from('products').select();
+  if (error) return res.status(500).json({ error });
+  res.json(data);
+  console.log('Todos os produtos:', data);
 });
 
+// Consulta produto por ID
 app.get('/products/:id', async (req, res) => {
-    console.log("id = " + req.params.id);
-    const {data, error} = await supabase
-        .from('products')
-        .select()
-        .eq('id', req.params.id)
-    res.send(data);
+  const { id } = req.params;
+  const { data, error } = await supabase
+    .from('products')
+    .select()
+    .eq('id', id)
+    .single(); // Retorna apenas um produto
 
-    console.log("retorno "+ data);
+  if (error) return res.status(404).json({ error: 'Produto não encontrado' });
+  res.json(data);
+  console.log('Produto consultado:', data);
 });
 
+// Adiciona um produto
 app.post('/products', async (req, res) => {
-    const {error} = await supabase
-        .from('products')
-        .insert({
-            name: req.body.name,
-            description: req.body.description,
-            price: req.body.price,
-        })
-    if (error) {
-        res.send(error);
-    }
-    res.send("created!!");
-    console.log("retorno "+ req.body.name);
-    console.log("retorno "+ req.body.description);
-    console.log("retorno "+ req.body.price);
+  const { name, description, price } = req.body;
+  const { data, error } = await supabase
+    .from('products')
+    .insert({ name, description, price })
+    .select()
+    .single(); // Retorna o produto criado
 
+  if (error) return res.status(500).json({ error });
+  res.json(data);
+  console.log('Produto criado:', data);
 });
 
+// Atualiza produto
 app.put('/products/:id', async (req, res) => {
-    const {error} = await supabase
-        .from('products')
-        .update({
-            name: req.body.name,
-            description: req.body.description,
-            price: req.body.price
-        })
-        .eq('id', req.params.id)
-    if (error) {
-        res.send(error);
-    }
-    res.send("updated!!");
+  const { id } = req.params;
+  const { name, description, price } = req.body;
+  const { data, error } = await supabase
+    .from('products')
+    .update({ name, description, price })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error });
+  res.json(data);
+  console.log('Produto atualizado:', data);
 });
 
+// Deleta produto
 app.delete('/products/:id', async (req, res) => {
-    console.log("delete: " + req.params.id);
-    const {error} = await supabase
-        .from('products')
-        .delete()
-        .eq('id', req.params.id)
-    if (error) {
-        res.send(error);
-    }
-    res.send("deleted!!")
-    console.log("delete: " + req.params.id);
+  const { id } = req.params;
+  const { data, error } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', id)
+    .select()
+    .single();
 
+  if (error) return res.status(500).json({ error });
+  res.json({ message: 'Produto deletado', data });
+  console.log('Produto deletado:', id);
 });
 
+// Rota raiz
 app.get('/', (req, res) => {
-    res.send("Hello I am working my friend Supabase <3");
+  res.send("Hello! Backend Supabase funcionando <3");
 });
- 
-//app.get('*', (req, res) => {
-    //res.send("Hello again I am working my friend to the moon and behind <3");
-// });
+
+// Inicializa servidor
 app.listen(3000, () => {
-    console.log(`> Ready on http://localhost:3000`);
+  console.log('> Servidor rodando em http://localhost:3000');
 });
